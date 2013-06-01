@@ -1,4 +1,4 @@
-package jdk8tests;
+package jdk8.performance;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ForEachTest {
+public class ForEach {
 
     public static void main(String[] args) {
         List<BigDecimal> list = getList();//list from 1 to 100
