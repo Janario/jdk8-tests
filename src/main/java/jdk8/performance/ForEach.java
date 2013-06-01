@@ -6,20 +6,22 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.function.Function;
 
 public class ForEach {
 
-//    private static final Function<Long, List<BigDecimal>> seeds = i -> {
-//        if (i == 0) {
-//            return new ArrayList<>();
-//        }
-//
-//        final List<BigDecimal> s = seeds.apply(i - 1);
-//        s.add(BigDecimal.valueOf(i));
-//        return s;
-//    };
+    private static final Function<Long, List<BigDecimal>> seeds = i -> {
+        if (i == 0) {
+            return new ArrayList<>();
+        }
+
+        final List<BigDecimal> s = seeds.apply(i - 1);
+        s.add(BigDecimal.valueOf(i));
+        return s;
+    };
+
     public static void main(String[] args) {
-        List<BigDecimal> list = getList();
+        List<BigDecimal> list = seeds.apply(1000L);
 
         for (int i = 0; i < 2; i++) {
             Duration classic = printClassicForEach(list);
@@ -38,7 +40,7 @@ public class ForEach {
 
     private static List<BigDecimal> getList() {
         List<BigDecimal> list = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             list.add(BigDecimal.valueOf(i));
         }
         return list;
