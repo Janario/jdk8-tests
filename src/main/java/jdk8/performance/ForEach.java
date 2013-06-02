@@ -1,81 +1,73 @@
 package jdk8.performance;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.Instant;
+import com.google.caliper.Benchmark;
+import com.google.caliper.runner.CaliperMain;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class ForEach {
 
-    private static final Function<Long, List<BigDecimal>> seeds = i -> {
+    private static final Function<Integer, List<Integer>> SEEDS = i -> {
         if (i == 0) {
             return new ArrayList<>();
         }
-
-        final List<BigDecimal> s = seeds.apply(i - 1);
-        s.add(BigDecimal.valueOf(i));
+        final List<Integer> s = SEEDS.apply(i - 1);
+        s.add(i);
         return s;
     };
 
+    public static class ForEachBenchmark extends Benchmark {
+
+        private List<Integer> list;
+
+        @Override
+        protected void setUp() throws Exception {
+            list = SEEDS.apply(1000);
+        }
+
+        public void timeForEachClassic(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicInteger atomicInteger = new AtomicInteger(0);
+                for (Integer integer : list) {
+                    atomicInteger.accumulateAndGet(integer, Integer::sum);
+                }
+            }
+        }
+
+        public void timeForEachStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+
+                AtomicInteger atomicInteger = new AtomicInteger(0);
+                list.stream().forEach((integer) -> {
+                    atomicInteger.accumulateAndGet(integer, Integer::sum);
+                });
+            }
+        }
+
+        public void timeForEachArrayList(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicInteger atomicInteger = new AtomicInteger(0);
+                list.forEach((integer) -> {
+                    atomicInteger.accumulateAndGet(integer, Integer::sum);
+                });
+            }
+        }
+
+        public void timeForEachParallelStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicInteger atomicInteger = new AtomicInteger(0);
+                list.parallelStream().forEach((integer) -> {
+                    atomicInteger.accumulateAndGet(integer, Integer::sum);
+                });
+            }
+        }
+
+    }
+
     public static void main(String[] args) {
-        List<BigDecimal> list = seeds.apply(1000L);
-
-        for (int i = 0; i < 2; i++) {
-            Duration classic = printClassicForEach(list);
-            Duration streamForEach = printStreamForEach(list);
-            Duration iterableForEach = printIterableForEach(list);
-
-            System.out.printf("Classic:  %s ms\n", classic.toMillis());
-            System.out.printf("Stream:   %s ms\n", streamForEach.toMillis());
-            System.out.printf("Iterable: %s ms\n", iterableForEach.toMillis());
-        }
-        //Example output:
-        //ClassicForEach: 3
-        //StreamForEach: 58
-        //IterableForEach: 6
-    }
-
-    private static List<BigDecimal> getList() {
-        List<BigDecimal> list = new ArrayList<>();
-        for (int i = 0; i < 1000; i++) {
-            list.add(BigDecimal.valueOf(i));
-        }
-        return list;
-    }
-
-    private static Duration printClassicForEach(List<BigDecimal> list) {
-        final StringJoiner sj = new StringJoiner(", ", "[", "]");
-        final Instant inicio = Instant.now();
-        for (BigDecimal bigDecimal : list) {
-            sj.add(bigDecimal.add(BigDecimal.ONE).toString());
-        }
-        final Duration duration = Duration.between(inicio, Instant.now());
-        System.out.println(sj.toString());
-        return duration;
-    }
-
-    private static Duration printStreamForEach(List<BigDecimal> list) {
-        final StringJoiner sj = new StringJoiner(", ", "[", "]");
-        final Instant inicio = Instant.now();
-        list.stream().forEach((bigDecimal) -> {
-            sj.add(bigDecimal.add(BigDecimal.ONE).toString());
-        });
-        final Duration duration = Duration.between(inicio, Instant.now());
-        System.out.println(sj.toString());
-        return duration;
-    }
-
-    private static Duration printIterableForEach(List<BigDecimal> list) {
-        final StringJoiner sj = new StringJoiner(", ", "[", "]");
-        final Instant inicio = Instant.now();
-        list.forEach((bigDecimal) -> {
-            sj.add(bigDecimal.add(BigDecimal.ONE).toString());
-        });
-        final Duration duration = Duration.between(inicio, Instant.now());
-        System.out.println(sj.toString());
-        return duration;
+//        ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=10s", "--time-limit", "40s"}, String.class)
+        CaliperMain.main(ForEachBenchmark.class, args);
     }
 }
