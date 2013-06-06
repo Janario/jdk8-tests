@@ -1,30 +1,32 @@
 package jdk8.performance;
 
 import com.google.caliper.Benchmark;
+import com.google.caliper.Param;
+import com.google.caliper.config.InvalidConfigurationException;
 import com.google.caliper.runner.CaliperMain;
-import java.util.ArrayList;
+import com.google.caliper.runner.InvalidBenchmarkException;
+import com.google.caliper.util.InvalidCommandException;
+import com.google.common.collect.ObjectArrays;
+import java.io.PrintWriter;
+import java.security.SecureRandom;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
+import static java.util.stream.Collectors.toList;
+import java.util.stream.IntStream;
 
 public class ForEach {
 
-    private static final Function<Integer, List<Integer>> SEEDS = i -> {
-        if (i == 0) {
-            return new ArrayList<>();
-        }
-        final List<Integer> s = SEEDS.apply(i - 1);
-        s.add(i);
-        return s;
-    };
-
     public static class ForEachBenchmark extends Benchmark {
+
+        @Param
+        int size;
 
         private List<Integer> list;
 
         @Override
         protected void setUp() throws Exception {
-            list = SEEDS.apply(1000);
+            list = IntStream.range(0, size).parallel().boxed().collect(toList());
         }
 
         public void timeForEachClassic(int reps) {
@@ -63,11 +65,123 @@ public class ForEach {
                 });
             }
         }
-
     }
 
-    public static void main(String[] args) {
-//        ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=10s", "--time-limit", "40s"}, String.class)
-        CaliperMain.main(ForEachBenchmark.class, args);
+    public static class ConditionalForEachBenchmark extends Benchmark {
+
+        @Param
+        int size;
+
+        private List<Integer> list;
+
+        @Override
+        protected void setUp() throws Exception {
+            list = IntStream.range(0, size).parallel().boxed().collect(toList());
+        }
+
+        public void timeForEachClassic(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicBoolean atomicBoolean = new AtomicBoolean(true);
+                for (Integer integer : list) {
+                    final boolean par = integer % 2 == 0;
+                    if (!(par && atomicBoolean.get())) {
+                        atomicBoolean.set(!atomicBoolean.get());
+                    }
+                }
+            }
+        }
+
+        public void timeForEachStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicBoolean atomicBoolean = new AtomicBoolean(true);
+                list.stream().forEach((integer) -> {
+                    final boolean par = integer % 2 == 0;
+                    if (!(par && atomicBoolean.get())) {
+                        atomicBoolean.set(!atomicBoolean.get());
+                    }
+                });
+            }
+        }
+
+        public void timeForEachArrayList(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicBoolean atomicBoolean = new AtomicBoolean(true);
+                list.forEach((integer) -> {
+                    final boolean par = integer % 2 == 0;
+                    if (!(par && atomicBoolean.get())) {
+                        atomicBoolean.set(!atomicBoolean.get());
+                    }
+                });
+            }
+        }
+
+        public void timeForEachParallelStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                AtomicBoolean atomicBoolean = new AtomicBoolean(true);
+                list.parallelStream().forEach((integer) -> {
+                    final boolean par = integer % 2 == 0;
+                    if (!(par && atomicBoolean.get())) {
+                        atomicBoolean.set(!atomicBoolean.get());
+                    }
+                });
+            }
+        }
+    }
+
+    public static class SecureRandomForEachBenchmark extends Benchmark {
+
+        @Param
+        int size;
+
+        private List<Integer> list;
+
+        @Override
+        protected void setUp() throws Exception {
+            list = IntStream.range(0, size).parallel().boxed().collect(toList());
+        }
+
+        public void timeForEachClassic(int reps) {
+            for (int i = 0; i < reps; i++) {
+                for (Integer integer : list) {
+                    SecureRandom secureRandom = new SecureRandom(new byte[integer]);
+                }
+            }
+        }
+
+        public void timeForEachStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                list.stream().forEach((integer) -> {
+                    SecureRandom secureRandom = new SecureRandom(new byte[integer]);
+                });
+            }
+        }
+
+        public void timeForEachArrayList(int reps) {
+            for (int i = 0; i < reps; i++) {
+                list.forEach((integer) -> {
+                    SecureRandom secureRandom = new SecureRandom(new byte[integer]);
+                });
+            }
+        }
+
+        public void timeForEachParallelStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                list.parallelStream().forEach((integer) -> {
+                    SecureRandom secureRandom = new SecureRandom(new byte[integer]);
+                });
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InvalidCommandException, InvalidBenchmarkException, InvalidConfigurationException {
+        //ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=10s", "--time-limit", "40s"}, String.class)
+//        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=30s", "-Dsize=10,100,1000", "--time-limit", "60s"}, String.class);
+        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=30s", "-Dsize=10,100,1000"}, String.class);
+        final PrintWriter stdout = new PrintWriter(System.out, true);
+        final PrintWriter stderr = new PrintWriter(System.err, true);
+
+        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ForEachBenchmark.class.getName()), stdout, stderr);
+        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ConditionalForEachBenchmark.class.getName()), stdout, stderr);
+        CaliperMain.exitlessMain(ObjectArrays.concat(concat, SecureRandomForEachBenchmark.class.getName()), stdout, stderr);
     }
 }
