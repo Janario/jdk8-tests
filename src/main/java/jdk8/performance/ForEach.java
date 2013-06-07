@@ -7,11 +7,11 @@ import com.google.caliper.runner.CaliperMain;
 import com.google.caliper.runner.InvalidBenchmarkException;
 import com.google.caliper.util.InvalidCommandException;
 import com.google.common.collect.ObjectArrays;
-import java.io.PrintWriter;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntFunction;
 import static java.util.stream.Collectors.toList;
 import java.util.stream.IntStream;
 
@@ -173,15 +173,65 @@ public class ForEach {
         }
     }
 
+    public static class FatorialForEachBenchmark extends Benchmark {
+
+        @Param
+        int size;
+
+        private List<Integer> list;
+
+        private final IntFunction<Integer> factorial = i -> {
+            return i == 0 ? 1 : i * factorial.apply(i - 1);
+        };
+
+        @Override
+        protected void setUp() throws Exception {
+            list = IntStream.range(0, size).parallel().boxed().collect(toList());
+        }
+
+        public void timeForEachClassic(int reps) {
+            for (int i = 0; i < reps; i++) {
+                for (Integer integer : list) {
+                    factorial.apply(integer);
+                }
+            }
+        }
+
+        public void timeForEachStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                list.stream().forEach((integer) -> {
+                    factorial.apply(integer);
+                });
+            }
+        }
+
+        public void timeForEachArrayList(int reps) {
+            for (int i = 0; i < reps; i++) {
+                list.forEach((integer) -> {
+                    factorial.apply(integer);
+                });
+            }
+        }
+
+        public void timeForEachParallelStream(int reps) {
+            for (int i = 0; i < reps; i++) {
+                list.parallelStream().forEach((integer) -> {
+                    factorial.apply(integer);
+                });
+            }
+        }
+    }
+
     public static void main(String[] args) throws InvalidCommandException, InvalidBenchmarkException, InvalidConfigurationException {
         //ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=10s", "--time-limit", "40s"}, String.class)
-//        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=30s", "-Dsize=10,100,1000", "--time-limit", "60s"}, String.class);
-        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=30s", "-Dsize=10,100,1000"}, String.class);
-        final PrintWriter stdout = new PrintWriter(System.out, true);
-        final PrintWriter stderr = new PrintWriter(System.err, true);
+        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=20s", "-Dsize=2000", "--time-limit", "50s",
+            "--instrument", "micro"}, String.class);
+//        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=30s", "-Dsize=10,100,1000"}, String.class);
 
-        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ForEachBenchmark.class.getName()), stdout, stderr);
-        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ConditionalForEachBenchmark.class.getName()), stdout, stderr);
-        CaliperMain.exitlessMain(ObjectArrays.concat(concat, SecureRandomForEachBenchmark.class.getName()), stdout, stderr);
+//        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ForEachBenchmark.class.getName()), stdout, stderr);
+//        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ConditionalForEachBenchmark.class.getName()), stdout, stderr);
+//        CaliperMain.exitlessMain(ObjectArrays.concat(concat, SecureRandomForEachBenchmark.class.getName()), stdout, stderr);
+//        CaliperMain.main(FatorialForEachBenchmark.class, concat);
+        CaliperMain.main(FatorialForEachBenchmark.class, concat);
     }
 }
