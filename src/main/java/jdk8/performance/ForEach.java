@@ -7,6 +7,7 @@ import com.google.caliper.runner.CaliperMain;
 import com.google.caliper.runner.InvalidBenchmarkException;
 import com.google.caliper.util.InvalidCommandException;
 import com.google.common.collect.ObjectArrays;
+import java.io.PrintWriter;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -223,15 +224,35 @@ public class ForEach {
     }
 
     public static void main(String[] args) throws InvalidCommandException, InvalidBenchmarkException, InvalidConfigurationException {
-        //ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=10s", "--time-limit", "40s"}, String.class)
-        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=20s", "-Dsize=2000", "--time-limit", "50s",
-            "--instrument", "micro"}, String.class);
-//        final String[] concat = ObjectArrays.concat(args, new String[]{"-Cinstrument.micro.options.warmup=30s", "-Dsize=10,100,1000"}, String.class);
+        runForEach();
+        runFatorialForEach();
+    }
 
-//        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ForEachBenchmark.class.getName()), stdout, stderr);
-//        CaliperMain.exitlessMain(ObjectArrays.concat(concat, ConditionalForEachBenchmark.class.getName()), stdout, stderr);
-//        CaliperMain.exitlessMain(ObjectArrays.concat(concat, SecureRandomForEachBenchmark.class.getName()), stdout, stderr);
-//        CaliperMain.main(FatorialForEachBenchmark.class, concat);
-        CaliperMain.main(FatorialForEachBenchmark.class, concat);
+    private static void runForEach() throws InvalidCommandException, InvalidBenchmarkException, InvalidConfigurationException {
+        PrintWriter stdout = new PrintWriter(System.out, true);
+        PrintWriter stderr = new PrintWriter(System.err, true);
+        CaliperMain.exitlessMain(
+                ObjectArrays.concat(
+                new String[]{
+                    "-Cinstrument.micro.options.warmup=30s",
+                    "-Dsize=10,100,1000",
+                    "--instrument", "micro",
+                    "--time-limit", "60s"},
+                ForEachBenchmark.class.getName()),
+                stdout, stderr);
+    }
+
+    private static void runFatorialForEach() throws InvalidCommandException, InvalidBenchmarkException, InvalidConfigurationException {
+        PrintWriter stdout = new PrintWriter(System.out, true);
+        PrintWriter stderr = new PrintWriter(System.err, true);
+        CaliperMain.exitlessMain(
+                ObjectArrays.concat(
+                new String[]{
+                    "-Cinstrument.micro.options.warmup=30s",
+                    "-Dsize=2000",
+                    "--instrument", "micro",
+                    "--time-limit", "60s"},
+                FatorialForEachBenchmark.class.getName()),
+                stdout, stderr);
     }
 }
