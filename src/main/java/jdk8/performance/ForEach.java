@@ -182,7 +182,7 @@ public class ForEach {
         private List<Integer> list;
 
         private final IntFunction<Integer> factorial = i -> {
-            return i == 0 ? 1 : i * factorial.apply(i - 1);
+            return i == 0 ? 1 : i * this.factorial.apply(i - 1);
         };
 
         @Override
